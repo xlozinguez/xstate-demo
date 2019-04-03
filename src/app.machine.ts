@@ -8,11 +8,19 @@ interface IFile {
     updatedAt: Date
 }
 
+interface IPromptingStateSchema {
+    states: {
+        prompt: {};
+        dismiss: {};
+    };
+}
+
 interface IAppStateSchema {
     states: {
         browsing: {};
         selecting: {};
         deleting: {};
+        prompting: IPromptingStateSchema;
     };
 }
 
@@ -105,10 +113,10 @@ const appMachineConfig: MachineConfig<IAppContext, IAppStateSchema, IAppEvent> =
         selecting: {
             on: {
                 SELECT_ITEM: {
-                    actions: 'addItemToSelection'
+                    actions: 'addItemToSelection' // implicit transition
                 },
                 SELECT_ALL_ITEMS: {
-                    actions: 'addAllItemsToSelection'
+                    actions: 'addAllItemsToSelection' // implicit transition
                 },
                 DESELECT_ITEM: [{
                     target: 'browsing',
@@ -135,8 +143,17 @@ const appMachineConfig: MachineConfig<IAppContext, IAppStateSchema, IAppEvent> =
                     actions: 'deleteSelection'
                 },
                 onError: {
-                    target: 'selecting' // No actions for now, but later we might want to display some messaging
+                    target: 'prompting'
                 }
+            }
+        },
+        prompting: {
+            key: 'prompt',
+            type: 'compound',
+            initial: 'prompt',
+            states: {
+                prompt: {},
+                dismiss: {}
             }
         }
     }
