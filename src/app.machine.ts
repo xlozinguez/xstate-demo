@@ -132,7 +132,7 @@ const appMachineConfig: MachineConfig<IAppContext, IAppStateSchema, IAppEvent> =
                 src: (ctx) => deleteItems(ctx.selectedItems),
                 onDone: {
                     target: 'browsing',
-                    actions: 'resetSelection'
+                    actions: 'deleteSelection'
                 },
                 onError: {
                     target: 'selecting' // No actions for now, but later we might want to display some messaging
@@ -155,6 +155,10 @@ const appMachineOptions: MachineOptions<IAppContext, IAppEvent> = {
             selectedItems: ctx.selectedItems.filter((item: IFile) => item.id !== (event as IAppEventWithItem).item.id)
         })),
         resetSelection: assign((_) => ({
+            selectedItems: []
+        })),
+        deleteSelection: assign((ctx: IAppContext) => ({
+            items: ctx.items.filter((item: IFile) => ctx.selectedItems.findIndex((selectedItem: IFile) => selectedItem.id === item.id) < 0),
             selectedItems: []
         })),
     }

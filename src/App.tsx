@@ -12,14 +12,18 @@ import {
     TableRow,
     Theme,
     Toolbar,
+    Tooltip,
     Typography,
     withStyles,
     WithStyles,
 } from '@material-ui/core';
 import { 
     Close,
+    Delete,
     FolderShared,
     Menu,
+    Search,
+
 } from '@material-ui/icons';
 import deepPurple from '@material-ui/core/colors/deepPurple';
 import { 
@@ -55,7 +59,16 @@ const styles = (theme: Theme) => createStyles({
     menuButton: {
         marginLeft: -18,
         marginRight: 10,
-    }
+    },
+    spacer: {
+        flex: '1 1 100%',
+    },
+    actions: {
+        // color: theme.palette.text.secondary,
+    },
+    title: {
+        flex: '0 0 auto',
+    },
 });
 interface IAppProps extends WithStyles<typeof styles> {}
 
@@ -73,28 +86,61 @@ const App = (props: IAppProps) => {
     const toggleSelectItem = (item: ISelecteableFile) => item.selected ? appState.send({ type: "DESELECT_ITEM", item }) : appState.send({ type: "SELECT_ITEM", item });
     const toggleSelectAll = () => allItemsSelected ? appState.send({ type: "RESET_SELECTION" }) : appState.send({ type: "SELECT_ALL_ITEMS" });
     const resetSelection = () => appState.send({ type: "RESET_SELECTION" });
+    const deleteSelection = () => appState.send({ type: "DELETE_SELECTION" });
 
     return (
         <div className={classes.root}>
-            <AppBar position="static" className={appState.state.matches('selecting') ? classes.selecting : classes.bar}>
+            <AppBar 
+                position="static" 
+                className={appState.state.matches('selecting') ? classes.selecting : classes.bar}
+            >
                 <Toolbar>
                     {
                         appState.state.matches('selecting') ?
                         (<IconButton
                             onClick={resetSelection}
-                            className={classes.menuButton} 
-                            color="inherit" 
+                            className={classes.menuButton}
+                            color="inherit"
                             aria-label="Reset Selection">
                             <Close />
                         </IconButton>)
                         :
-                        (<IconButton className={classes.menuButton} color="inherit" aria-label="Menu">
+                        (<IconButton 
+                            className={classes.menuButton} 
+                            color="inherit" 
+                            aria-label="Menu">
                             <Menu />
                         </IconButton>)
                     }
-                    <Typography variant="h6" color="inherit">
-                        My files
-                    </Typography>
+                    <div className={classes.title}>
+                        {
+                            appState.context.selectedItems.length > 0 ? 
+                            (<Typography color="inherit" variant="subtitle1">
+                                {appState.context.selectedItems.length} selected
+                            </Typography>)
+                            :
+                            (<Typography variant="h6" id="tableTitle">
+                                My files
+                            </Typography>)
+                        }
+                    </div>
+                    <div className={classes.spacer} />
+                    <div className={classes.actions}>
+                        {
+                            appState.context.selectedItems.length > 0 ? 
+                            (<Tooltip title="Delete">
+                                <IconButton color="inherit" aria-label="Delete" onClick={deleteSelection}>
+                                    <Delete />
+                                </IconButton>
+                            </Tooltip>)
+                            :
+                            (<Tooltip title="Search">
+                                <IconButton color="inherit" aria-label="Search">
+                                    <Search />
+                                </IconButton>
+                            </Tooltip>)
+                        }
+                    </div>
                 </Toolbar>
             </AppBar>
             <Table aria-labelledby="tableTitle">
