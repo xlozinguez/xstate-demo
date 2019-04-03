@@ -1,19 +1,15 @@
-import { actions, MachineConfig, MachineOptions } from "xstate"
+import { actions, MachineConfig, MachineOptions, Machine } from "xstate"
 const { assign } = actions
 
 interface IPromptingStateSchema {
     states: {
-        hidden: {};
         displayed: {};
+        hidden: {};
     };
 }
 
 type IPromptEvent =
-    | { type: 'DISPLAY_PROMPT', message: String }
-    | { type: 'HIDE_PROMPT' };
-
-
-type IPromptEventWithMessage = { type: String, message: String }
+    | { type: 'DISMISS_PROMPT' };
 
 interface IPromptContext {
     message: String
@@ -21,39 +17,31 @@ interface IPromptContext {
 
 const promptMachineConfig: MachineConfig<IPromptContext, IPromptingStateSchema, IPromptEvent> = {
     key: 'prompt',
-    initial: 'hidden',
+    initial: 'displayed',
     context: {
         message: ''
     },
     states: {
-        hidden: {
-            on: {
-                DISPLAY_PROMPT: {
-                    target: 'displayed',
-                    actions: 'updateMessage'
-                }
-            }
-        },
         displayed: {
             on: {
-                HIDE_PROMPT: {
+                DISMISS_PROMPT: {
                     target: 'hidden',
                     actions: 'clearMessage'
                 }
             }
-        }
+        },
+        hidden: {
+            type: 'final'
+        },
     }
 }
 
-const promptMachineOptions: MachineOptions<IPromptContext, IPromptEvent> = {
+const promptMachineOptions = { //: MachineOptions<IPromptContext, IPromptEvent>
     actions: {
-        updateMessage: assign((ctx: IPromptContext, event: IPromptEvent) => ({
-            message: (event as IPromptEventWithMessage).message
-        })),
         clearMessage: assign((ctx: IPromptContext) => ({
             message: ''
         })),
     }
 };
 
-export { promptMachineConfig, promptMachineOptions }
+export default Machine(promptMachineConfig, promptMachineOptions);
