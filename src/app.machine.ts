@@ -1,4 +1,5 @@
-import { actions, MachineConfig, MachineOptions } from "xstate"
+import { actions, send, Machine, MachineConfig, MachineOptions } from "xstate"
+import promptMachine from './prompt.machine';
 const { assign } = actions
 
 interface IFile {
@@ -13,6 +14,7 @@ interface IAppStateSchema {
         browsing: {};
         selecting: {};
         deleting: {};
+        prompting: {};
     };
 }
 
@@ -23,9 +25,11 @@ type IAppEvent =
     | { type: 'DESELECT_ITEM', item: IFile }
     | { type: 'DELETE_SELECTION' }
     | { type: 'SELECTION_DELETED' }
-    | { type: 'RESET_SELECTION' };
+    | { type: 'RESET_SELECTION' }
+    | { type: 'DISMISS_PROMPT' };
 
 type IAppEventWithItem = { type: String, item: IFile }
+type IAppEventWithMessage = { type: String, item: IFile }
 
 // The context (extended state) of the machine
 interface IAppContext {
@@ -79,8 +83,9 @@ const initialAppContext: IAppContext = {
 
 // Simulated API request
 function deleteItems(items: IFile[]) {
-    return new Promise((resolve) =>
-        setTimeout(() => resolve(`${items.length} items deleted succesfully`), 3000)
+    return new Promise((resolve, reject) =>
+        // setTimeout(() => resolve(`${items.length} items deleted succesfully`), 3000)
+        reject(`Error deleting the ${items.length} selected item(s). Please try again later.`)
     )
 };
 
@@ -105,18 +110,18 @@ const appMachineConfig: MachineConfig<IAppContext, IAppStateSchema, IAppEvent> =
         selecting: {
             on: {
                 SELECT_ITEM: {
-                    actions: 'addItemToSelection'
+                    actions: 'addItemToSelection' // implicit transition
                 },
                 SELECT_ALL_ITEMS: {
-                    actions: 'addAllItemsToSelection'
+                    actions: 'addAllItemsToSelection' // implicit transition
                 },
                 DESELECT_ITEM: [{
                     target: 'browsing',
                     actions: 'removeItemFromSelection',
-                    cond: (ctx) =>( ctx.selectedItems.length === 1) // condition: last item in selection
+                    cond: (ctx: IAppContext) =>( ctx.selectedItems.length === 1) // condition: last item in selection
                 }, {
                     actions: 'removeItemFromSelection',
-                    cond: (ctx) =>( ctx.selectedItems.length > 1) // condition: still more items selected
+                    cond: (ctx: IAppContext) =>( ctx.selectedItems.length > 1) // condition: still more items selected
                 }],
                 RESET_SELECTION: {
                     target: 'browsing',
@@ -129,13 +134,28 @@ const appMachineConfig: MachineConfig<IAppContext, IAppStateSchema, IAppEvent> =
         },
         deleting: {
             invoke:{
-                src: (ctx) => deleteItems(ctx.selectedItems),
+                src: (ctx: IAppContext) => deleteItems(ctx.selectedItems),
                 onDone: {
                     target: 'browsing',
                     actions: 'deleteSelection'
                 },
                 onError: {
-                    target: 'selecting' // No actions for now, but later we might want to display some messaging
+                    target: 'prompting'
+                }
+            }
+        },
+        prompting: {
+            invoke: {
+                id: 'prompt',
+                src: promptMachine,
+                data: {
+                    message: (ctx: IAppContext, event: IAppEvent) => { console.log(ctx, event) }
+                },
+                onDone: 'selecting' // The onDone transition will be taken when the promptMachine has reached its top-level final state.
+            },
+            on: {
+                DISMISS_PROMPT: {
+                    actions: send('DISMISS_PROMPT', { to: 'prompt' })
                 }
             }
         }
@@ -143,7 +163,7 @@ const appMachineConfig: MachineConfig<IAppContext, IAppStateSchema, IAppEvent> =
 }
 
 // App State Machine Options
-const appMachineOptions: MachineOptions<IAppContext, IAppEvent> = {
+const appMachineOptions = {  //: MachineOptions<IAppContext, IAppEvent>
     actions: {
         addItemToSelection: assign((ctx: IAppContext, event: IAppEvent) => ({
             selectedItems: ctx.selectedItems.concat((event as IAppEventWithItem).item)
@@ -164,7 +184,4 @@ const appMachineOptions: MachineOptions<IAppContext, IAppEvent> = {
     }
 };
 
-export {
-    appMachineConfig,
-    appMachineOptions
-}
+export default Machine(appMachineConfig, appMachineOptions);

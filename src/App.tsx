@@ -1,9 +1,15 @@
 import React from 'react';
-import { useMachine } from 'use-machine';
+import { useMachine } from '@xstate/react';
 import {
     AppBar,
+    Button,
     Checkbox,
     createStyles,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
     IconButton,
     Table,
     TableBody,
@@ -23,13 +29,9 @@ import {
     FolderShared,
     Menu,
     Search,
-
 } from '@material-ui/icons';
 import deepPurple from '@material-ui/core/colors/deepPurple';
-import { 
-    appMachineConfig,
-    appMachineOptions
-} from './app.machine'
+import appStateMachine from './app.machine'
 
 interface IFile {
     id: Number
@@ -74,29 +76,30 @@ interface IAppProps extends WithStyles<typeof styles> {}
 
 const App = (props: IAppProps) => {
     const { classes } = props;
-    const appState = useMachine(appMachineConfig, appMachineOptions);
+    const [current , send] = useMachine(appStateMachine, { devTools: true });
     
-    const itemList: ISelecteableFile[] = appState.context.items.map((item: IFile) => ({
+    const itemList: ISelecteableFile[] = current.context.items.map((item: IFile) => ({
         ...item,
-        selected: appState.context.selectedItems.findIndex((selectedItem: IFile) => selectedItem.id === item.id) >= 0
+        selected: current.context.selectedItems.findIndex((selectedItem: IFile) => selectedItem.id === item.id) >= 0
     }));
     
-    const allItemsSelected: boolean = appState.context.selectedItems.length === appState.context.items.length;
+    const allItemsSelected: boolean = current.context.selectedItems.length === current.context.items.length;
 
-    const toggleSelectItem = (item: ISelecteableFile) => item.selected ? appState.send({ type: "DESELECT_ITEM", item }) : appState.send({ type: "SELECT_ITEM", item });
-    const toggleSelectAll = () => allItemsSelected ? appState.send({ type: "RESET_SELECTION" }) : appState.send({ type: "SELECT_ALL_ITEMS" });
-    const resetSelection = () => appState.send({ type: "RESET_SELECTION" });
-    const deleteSelection = () => appState.send({ type: "DELETE_SELECTION" });
+    const toggleSelectItem = (item: ISelecteableFile) => item.selected ? send({ type: "DESELECT_ITEM", item }) : send({ type: "SELECT_ITEM", item });
+    const toggleSelectAll = () => allItemsSelected ? send({ type: "RESET_SELECTION" }) : send({ type: "SELECT_ALL_ITEMS" });
+    const resetSelection = () => send({ type: "RESET_SELECTION" });
+    const deleteSelection = () => send({ type: "DELETE_SELECTION" });
+    const dismissPrompt = () => send({ type: "DISMISS_PROMPT" });
 
     return (
         <div className={classes.root}>
             <AppBar 
                 position="static" 
-                className={appState.state.matches('selecting') ? classes.selecting : classes.bar}
+                className={current.matches('selecting') ? classes.selecting : classes.bar}
             >
                 <Toolbar>
                     {
-                        appState.state.matches('selecting') ?
+                        current.matches('selecting') ?
                         (<IconButton
                             onClick={resetSelection}
                             className={classes.menuButton}
@@ -114,9 +117,9 @@ const App = (props: IAppProps) => {
                     }
                     <div className={classes.title}>
                         {
-                            appState.context.selectedItems.length > 0 ? 
+                            current.context.selectedItems.length > 0 ? 
                             (<Typography color="inherit" variant="subtitle1">
-                                {appState.context.selectedItems.length} selected
+                                {current.context.selectedItems.length} selected
                             </Typography>)
                             :
                             (<Typography variant="h6" id="tableTitle">
@@ -127,7 +130,7 @@ const App = (props: IAppProps) => {
                     <div className={classes.spacer} />
                     <div className={classes.actions}>
                         {
-                            appState.context.selectedItems.length > 0 ? 
+                            current.context.selectedItems.length > 0 ? 
                             (<Tooltip title="Delete">
                                 <IconButton color="inherit" aria-label="Delete" onClick={deleteSelection}>
                                     <Delete />
@@ -169,7 +172,7 @@ const App = (props: IAppProps) => {
                         >
                             <TableCell padding="checkbox">
                                 {
-                                    appState.state.matches('browsing') ? 
+                                    current.matches('browsing') ? 
                                     (<IconButton><FolderShared /></IconButton>)
                                     :
                                     (<Checkbox checked={item.selected as boolean}/>)
@@ -182,6 +185,28 @@ const App = (props: IAppProps) => {
                     ))}
                 </TableBody>
             </Table>
+            <Dialog
+                open={current.matches('prompting')}
+                keepMounted
+                onClose={dismissPrompt}
+                aria-labelledby="alert-dialog-slide-title"
+                aria-describedby="alert-dialog-slide-description"
+            >
+                <DialogTitle id="alert-dialog-slide-title">Error deleting selection</DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="alert-dialog-slide-description">
+                        An error occured and we were not able to delete your selection.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={dismissPrompt} color="primary">
+                        Ok
+                    </Button>
+                    <Button onClick={deleteSelection} color="primary">
+                        Retry
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </div>
     )
 };
