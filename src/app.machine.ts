@@ -84,15 +84,15 @@ const initialAppContext: IAppContext = {
 // Simulated API request
 function deleteItems(items: IFile[]) {
     return new Promise((resolve, reject) =>
-        // setTimeout(() => resolve(`${items.length} items deleted succesfully`), 3000)
-        reject(`Error deleting the ${items.length} selected item(s). Please try again later.`)
+        setTimeout(() => resolve(`${items.length} items deleted succesfully`), 3000)
+        // setTimeout(() => reject(`Error deleting the ${items.length} selected item(s). Please try again later.`), 3000)
     )
 };
 
 // App State Machine Config
 const appMachineConfig: MachineConfig<IAppContext, IAppStateSchema, IAppEvent> = {
     key: 'app',
-    initial: 'browsing',
+    initial: 'deleting',
     context: initialAppContext,
     states: {
         browsing: {
@@ -156,6 +156,9 @@ const appMachineConfig: MachineConfig<IAppContext, IAppStateSchema, IAppEvent> =
             on: {
                 DISMISS_PROMPT: {
                     actions: send('DISMISS_PROMPT', { to: 'prompt' })
+                },
+                DELETE_SELECTION: {
+                    target: 'deleting',
                 }
             }
         }

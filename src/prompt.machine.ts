@@ -1,4 +1,4 @@
-import { actions, MachineConfig, MachineOptions, Machine } from "xstate"
+import { actions, sendParent, MachineConfig, MachineOptions, Machine } from "xstate"
 const { assign } = actions
 
 interface IPromptingStateSchema {
@@ -9,7 +9,8 @@ interface IPromptingStateSchema {
 }
 
 type IPromptEvent =
-    | { type: 'DISMISS_PROMPT' };
+    | { type: 'DISMISS_PROMPT' }
+    | { type: 'DELETE_SELECTION' };
 
 interface IPromptContext {
     message: String
@@ -27,6 +28,9 @@ const promptMachineConfig: MachineConfig<IPromptContext, IPromptingStateSchema, 
                 DISMISS_PROMPT: {
                     target: 'hidden',
                     actions: 'clearMessage'
+                },
+                DELETE_SELECTION: {
+                    actions: sendParent('DISMISS_PROMPT')
                 }
             }
         },

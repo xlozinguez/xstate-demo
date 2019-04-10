@@ -3,6 +3,7 @@ import { useMachine } from '@xstate/react';
 import {
     AppBar,
     Button,
+    CircularProgress,
     Checkbox,
     createStyles,
     Dialog,
@@ -30,6 +31,7 @@ import {
     Menu,
     Search,
 } from '@material-ui/icons';
+import blue from '@material-ui/core/colors/blue';
 import deepPurple from '@material-ui/core/colors/deepPurple';
 import appStateMachine from './app.machine'
 
@@ -49,7 +51,7 @@ const styles = (theme: Theme) => createStyles({
         flexGrow: 1,
     },
     bar: {
-        backgroundColor: theme.palette.common.black,
+        // backgroundColor: theme.palette.common.black,
     },
     selecting: {
         backgroundColor: deepPurple[500],
@@ -68,9 +70,18 @@ const styles = (theme: Theme) => createStyles({
     actions: {
         // color: theme.palette.text.secondary,
     },
-    title: {
+    titleContainer: {
         flex: '0 0 auto',
     },
+    title: {
+        color: theme.palette.common.white,
+    },
+    fabProgress: {
+      color: blue[500],
+      position: 'absolute',
+      top: 6,
+      zIndex: 1,
+    }
 });
 interface IAppProps extends WithStyles<typeof styles> {}
 
@@ -85,17 +96,18 @@ const App = (props: IAppProps) => {
     
     const allItemsSelected: boolean = current.context.selectedItems.length === current.context.items.length;
 
-    const toggleSelectItem = (item: ISelecteableFile) => item.selected ? send({ type: "DESELECT_ITEM", item }) : send({ type: "SELECT_ITEM", item });
-    const toggleSelectAll = () => allItemsSelected ? send({ type: "RESET_SELECTION" }) : send({ type: "SELECT_ALL_ITEMS" });
     const resetSelection = () => send({ type: "RESET_SELECTION" });
     const deleteSelection = () => send({ type: "DELETE_SELECTION" });
     const dismissPrompt = () => send({ type: "DISMISS_PROMPT" });
+
+    const toggleSelectItem = (item: ISelecteableFile) => item.selected ? send({ type: "DESELECT_ITEM", item }) : send({ type: "SELECT_ITEM", item });
+    const toggleSelectAll = () => allItemsSelected ? send({ type: "RESET_SELECTION" }) : send({ type: "SELECT_ALL_ITEMS" });
 
     return (
         <div className={classes.root}>
             <AppBar 
                 position="static" 
-                className={current.matches('selecting') ? classes.selecting : classes.bar}
+                className={current.matches('browsing') ? classes.bar : classes.selecting}
             >
                 <Toolbar>
                     {
@@ -115,31 +127,37 @@ const App = (props: IAppProps) => {
                             <Menu />
                         </IconButton>)
                     }
-                    <div className={classes.title}>
+                    <div className={classes.titleContainer}>
                         {
-                            current.context.selectedItems.length > 0 ? 
-                            (<Typography color="inherit" variant="subtitle1">
-                                {current.context.selectedItems.length} selected
+                            current.matches('browsing') ? 
+                            (<Typography variant="h6" id="tableTitle" className={classes.title}>
+                                My files
                             </Typography>)
                             :
-                            (<Typography variant="h6" id="tableTitle">
-                                My files
+                            (<Typography color="inherit" variant="subtitle1">
+                                {current.context.selectedItems.length} selected
                             </Typography>)
                         }
                     </div>
                     <div className={classes.spacer} />
                     <div className={classes.actions}>
                         {
-                            current.context.selectedItems.length > 0 ? 
-                            (<Tooltip title="Delete">
-                                <IconButton color="inherit" aria-label="Delete" onClick={deleteSelection}>
-                                    <Delete />
-                                </IconButton>
-                            </Tooltip>)
-                            :
+                            current.matches('browsing') ?
                             (<Tooltip title="Search">
                                 <IconButton color="inherit" aria-label="Search">
                                     <Search />
+                                </IconButton>
+                            </Tooltip>)
+                            :
+                            (<Tooltip title="Delete">
+                                <IconButton 
+                                    disabled={current.matches('deleting')}
+                                    color="inherit" 
+                                    aria-label="Delete" 
+                                    onClick={deleteSelection}
+                                >
+                                    <Delete />
+                                    {current.matches('deleting') && <CircularProgress size={40} className={classes.fabProgress} />}
                                 </IconButton>
                             </Tooltip>)
                         }
